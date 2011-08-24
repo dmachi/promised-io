@@ -19,8 +19,8 @@ exports.request = function(originalRequest){
 			request[key] = originalRequest[key];
 		}
 	}
-	
-	if(request.timeout === undefined)request.timeout= 20000; // default timeout.
+	request.timeout=request.timeout||20000;
+
 	if(request.url){
 		var parsed = parse(request.url);
 		if (parsed.pathname) {
@@ -41,15 +41,17 @@ exports.request = function(originalRequest){
 		request.protocol = proxySettings.protocol;
 		request.hostname = proxySettings.hostname;
 	}
+
 	if(!request.protocol){
 		throw new Error("No valid protocol/URL provided");
 	}
+
 	var timedOut, bodyDeferred;
 	// Limits the time of sending the request + receiving the response header to 20 seconds.
 	// No timeout is used on the client stream, but we do destroy the stream if a timeout is reached.
+
 	var timeout = setTimeout(function(){
 		timedOut = true;
-		client.destroy();
 		deferred.reject(new Error("Timeout"));
 	}, request.timeout);
 
@@ -59,11 +61,11 @@ exports.request = function(originalRequest){
 	request.host = request.hostname;
 	request.method = request.method || "GET";
 	request.path = request.pathname || request.pathInfo || "";
+
 	if (request.queryString) {
 	  request.path += "?"+request.queryString;
 	}
 	var timedOut;
-
 	var req = (secure ? https : http).request(request);
 	req.on("response", function (response){
 		if(timedOut){
@@ -89,14 +91,9 @@ exports.request = function(originalRequest){
 		});
 		response.on("end", function(){
 			bodyDeferred.resolve();
-			// Since we have no connection pooling, let's not pretend to use Keep-Alive
-			client.end();
 		});
 		deferred.resolve(response);
 		clearTimeout(timeout);
-	});
-	req.on('error', function(e) {
-		deferred.reject(e);
 	});
 	if(request.body){
 		return when(request.body.forEach(function(block){
